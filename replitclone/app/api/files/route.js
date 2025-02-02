@@ -90,28 +90,57 @@ export async function GET() {
   }
 }
 
-// Create a new file (POST /api/files)
+// // Create a new file (POST /api/files)
+// export async function POST(req) {
+//   await connectDB(); // Ensure DB connection
+//   try {
+//     const { name, content } = await req.json();
+//     const newFile = new File({ name, content });
+//     await newFile.save();
+//     return NextResponse.json(newFile, { status: 201 });
+//   } catch (error) {
+//     return NextResponse.json(
+//       { error: "Failed to create file" },
+//       { status: 400 }
+//     );
+//   }
+// }
+
 export async function POST(req) {
-  await connectDB(); // Ensure DB connection
+  await connectDB(); // Ensure DB connection is successful
+
   try {
+    // Parse the request body
     const { name, content } = await req.json();
+    if (!name || !content) {
+      throw new Error("Missing required fields: name or content");
+    }
+
+    // Log the incoming data for debugging
+    console.log("Creating file with data:", { name, content });
+
+    // Create a new file in the database
     const newFile = new File({ name, content });
     await newFile.save();
+
+    // Return the newly created file
     return NextResponse.json(newFile, { status: 201 });
   } catch (error) {
+    // Log the error for debugging
+    console.error("Error creating file:", error);
+
     return NextResponse.json(
-      { error: "Failed to create file" },
+      { error: "Failed to create file", message: error.message },
       { status: 400 }
     );
   }
 }
-
 // Update file content (PUT /api/files)
 export async function PUT(req) {
   await connectDB(); // Ensure DB connection
   try {
     const { id, name, content } = await req.json();
-    
+
     // Validate ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid file ID" }, { status: 400 });
@@ -120,7 +149,7 @@ export async function PUT(req) {
     // Update file name or content if provided
     const updatedFile = await File.findByIdAndUpdate(
       id,
-      { ...(name && { name }), ...(content && { content }) }, 
+      { ...(name && { name }), ...(content && { content }) },
       { new: true }
     );
 
