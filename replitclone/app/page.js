@@ -124,12 +124,22 @@ function Page() {
     [file content]
     \`)
 
-    - Store new files in MongoDB using /api/files
-    - Separate HTML, CSS, React (JSX), and JavaScript files correctly
-    - If the response contains React code, make sure to separate components and include React-specific configurations (e.g., index.js, App.js, etc.)
-    - If updating files, use the format @updateFile(filename: "file.ext", content: "new content").
-    - Ensure that the generated React files are compatible with a React environment.
+    - Store new files in MongoDB using /api/files.
+    - Correctly classify and separate different file types: 
+      - Static: HTML, CSS, JS 
+      - React: JSX, JS (React components)
+    - For React projects:
+      - Ensure the presence of index.js as the entry point.
+      - Ensure index.html contains a root <div id="root"></div>.
+      - Separate components correctly (e.g., App.js, Header.jsx).
+      - Include a package.json file with necessary React dependencies.
+      - Ensure all React files follow ES6+ syntax and React best practices.
 
+    2. @updateFile - To update existing files:
+    @updateFile(filename: "file.ext", content: "new content")
+
+    - Maintain compatibility with React environment.
+    - Ensure any updated files do not break existing imports.
   `}
         labels={{
           title: "Project Assistant",
