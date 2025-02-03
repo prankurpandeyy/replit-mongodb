@@ -14,7 +14,7 @@
 //   const [currentFile, setCurrentFile] = useState(null);
 //   const [code, setCode] = useState("// Select or create a file");
 
-//   // Sync the workspace state with CopilotKit
+//   // Sync workspace state with CopilotKit
 //   useCopilotReadable({
 //     name: "workspaceState",
 //     description: "Current state of the workspace",
@@ -63,26 +63,22 @@
 //     }
 //   };
 
-//   // 🔥 New feature: Process chatbot-generated files and store them in MongoDB
+//   // 🔥 Improved AI-generated file processing (Handles React & Separates CSS)
 //   useCopilotAction({
 //     name: "processFiles",
 //     description: "Processes AI-generated files and saves them to MongoDB",
 //     parameters: [{ name: "response", type: "string", required: true }],
 //     handler: async ({ response }) => {
 //       try {
-//         const fileBlocks = response.split("---"); // Splitting multiple files
+//         // 🔍 Regex to extract multiple files correctly
+//         const filePattern =
+//           /FILE:\s*([\w.\-\/]+)\s*\nCODE:\s*([\s\S]*?)(?=\nFILE:|$)/g;
+//         let match;
 //         const newFiles = [];
 
-//         for (const block of fileBlocks) {
-//           const lines = block.trim().split("\n");
-//           if (lines.length < 2) continue; // Skip invalid blocks
-
-//           const fileName = lines[0].replace("FILE:", "").trim();
-//           const fileContent = lines
-//             .slice(1)
-//             .join("\n")
-//             .replace("CODE:", "")
-//             .trim();
+//         while ((match = filePattern.exec(response)) !== null) {
+//           const fileName = match[1].trim();
+//           const fileContent = match[2].trim();
 
 //           if (fileName && fileContent) {
 //             // Save to MongoDB
@@ -101,6 +97,7 @@
 
 //         // Update state to reflect new files
 //         setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+
 //         return `Files saved successfully: ${newFiles
 //           .map((f) => f.name)
 //           .join(", ")}`;
@@ -132,9 +129,8 @@
 //     [file content]
 //     \`)
 
-//     After generating files, send them to the backend:
-
-//     - Store new files in api/files. Always provide the file name and content.
+//     - Store new files in MongoDB using /api/files
+//     - Separate HTML, CSS, and React files correctly
 //     - If updating, use @updateFile(filename: "file.ext", content: "new content").
 //   `}
 //         labels={{
@@ -149,21 +145,17 @@
 // export default Page;
 "use client";
 import React, { useState, useEffect } from "react";
-import {
-  CopilotKit,
-  useCopilotAction,
-  useCopilotReadable,
-} from "@copilotkit/react-core";
+import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import { CopilotPopup } from "@copilotkit/react-ui";
 import ScreenOne from "./components/ScreenOne";
 import FileExplorer from "./components/FileExplorer";
+import LivePreview from "./components/LivePreview"; // 🆕 Import LivePreview
 
 function Page() {
   const [files, setFiles] = useState([]);
   const [currentFile, setCurrentFile] = useState(null);
   const [code, setCode] = useState("// Select or create a file");
 
-  // Sync workspace state with CopilotKit
   useCopilotReadable({
     name: "workspaceState",
     description: "Current state of the workspace",
@@ -174,7 +166,6 @@ function Page() {
     },
   });
 
-  // Fetch files from MongoDB
   const fetchFiles = async () => {
     try {
       const response = await fetch("/api/files");
@@ -190,13 +181,11 @@ function Page() {
     fetchFiles();
   }, []);
 
-  // Handle file selection
   const handleFileSelect = (file) => {
     setCurrentFile(file);
     setCode(file.content);
   };
 
-  // Handle code changes
   const handleCodeChange = async (value) => {
     setCode(value);
     if (currentFile) {
@@ -212,14 +201,12 @@ function Page() {
     }
   };
 
-  // 🔥 Improved AI-generated file processing (Handles React & Separates CSS)
   useCopilotAction({
     name: "processFiles",
     description: "Processes AI-generated files and saves them to MongoDB",
     parameters: [{ name: "response", type: "string", required: true }],
     handler: async ({ response }) => {
       try {
-        // 🔍 Regex to extract multiple files correctly
         const filePattern =
           /FILE:\s*([\w.\-\/]+)\s*\nCODE:\s*([\s\S]*?)(?=\nFILE:|$)/g;
         let match;
@@ -230,7 +217,6 @@ function Page() {
           const fileContent = match[2].trim();
 
           if (fileName && fileContent) {
-            // Save to MongoDB
             const res = await fetch("/api/files", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -244,7 +230,6 @@ function Page() {
           }
         }
 
-        // Update state to reflect new files
         setFiles((prevFiles) => [...prevFiles, ...newFiles]);
 
         return `Files saved successfully: ${newFiles
@@ -267,6 +252,8 @@ function Page() {
           onChange={handleCodeChange}
         />
       </div>
+      <LivePreview files={files} currentFile={currentFile} />{" "}
+      {/* 🆕 Add LivePreview */}
       <CopilotPopup
         instructions={`
     You are an AI-powered code generator. Use the following actions:
