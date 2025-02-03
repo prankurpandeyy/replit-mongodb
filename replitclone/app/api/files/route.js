@@ -90,22 +90,6 @@ export async function GET() {
   }
 }
 
-// // Create a new file (POST /api/files)
-// export async function POST(req) {
-//   await connectDB(); // Ensure DB connection
-//   try {
-//     const { name, content } = await req.json();
-//     const newFile = new File({ name, content });
-//     await newFile.save();
-//     return NextResponse.json(newFile, { status: 201 });
-//   } catch (error) {
-//     return NextResponse.json(
-//       { error: "Failed to create file" },
-//       { status: 400 }
-//     );
-//   }
-// }
-
 export async function POST(req) {
   await connectDB(); // Ensure DB connection is successful
 

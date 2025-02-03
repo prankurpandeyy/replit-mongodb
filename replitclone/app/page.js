@@ -113,8 +113,31 @@ function Page() {
         code={code}
         onCodeChange={handleCodeChange}
       />
-
       <CopilotPopup
+        instructions={`
+    You are an AI-powered code generator. Use the following actions:
+
+    1. @processFiles - To create new files, use this format:
+    @processFiles(response: \`
+    FILE: filename.ext
+    CODE:
+    [file content]
+    \`)
+
+    - Store new files in MongoDB using /api/files
+    - Separate HTML, CSS, React (JSX), and JavaScript files correctly
+    - If the response contains React code, make sure to separate components and include React-specific configurations (e.g., index.js, App.js, etc.)
+    - If updating files, use the format @updateFile(filename: "file.ext", content: "new content").
+    - Ensure that the generated React files are compatible with a React environment.
+
+  `}
+        labels={{
+          title: "Project Assistant",
+          initial: "What would you like to create?",
+        }}
+      />
+
+      {/* <CopilotPopup
         instructions={`
     You are an AI-powered code generator. Use the following actions:
 
@@ -133,7 +156,7 @@ function Page() {
           title: "Project Assistant",
           initial: "What would you like to create?",
         }}
-      />
+      /> */}
     </div>
   );
 }
