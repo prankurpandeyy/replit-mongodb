@@ -1,20 +1,16 @@
 // "use client";
 // import React, { useState, useEffect } from "react";
-// import {
-//   CopilotKit,
-//   useCopilotAction,
-//   useCopilotReadable,
-// } from "@copilotkit/react-core";
+// import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 // import { CopilotPopup } from "@copilotkit/react-ui";
 // import ScreenOne from "./components/ScreenOne";
 // import FileExplorer from "./components/FileExplorer";
+// import LivePreview from "./components/LivePreview"; // 🆕 Import LivePreview
 
 // function Page() {
 //   const [files, setFiles] = useState([]);
 //   const [currentFile, setCurrentFile] = useState(null);
 //   const [code, setCode] = useState("// Select or create a file");
 
-//   // Sync workspace state with CopilotKit
 //   useCopilotReadable({
 //     name: "workspaceState",
 //     description: "Current state of the workspace",
@@ -25,7 +21,6 @@
 //     },
 //   });
 
-//   // Fetch files from MongoDB
 //   const fetchFiles = async () => {
 //     try {
 //       const response = await fetch("/api/files");
@@ -41,13 +36,11 @@
 //     fetchFiles();
 //   }, []);
 
-//   // Handle file selection
 //   const handleFileSelect = (file) => {
 //     setCurrentFile(file);
 //     setCode(file.content);
 //   };
 
-//   // Handle code changes
 //   const handleCodeChange = async (value) => {
 //     setCode(value);
 //     if (currentFile) {
@@ -63,14 +56,12 @@
 //     }
 //   };
 
-//   // 🔥 Improved AI-generated file processing (Handles React & Separates CSS)
 //   useCopilotAction({
 //     name: "processFiles",
 //     description: "Processes AI-generated files and saves them to MongoDB",
 //     parameters: [{ name: "response", type: "string", required: true }],
 //     handler: async ({ response }) => {
 //       try {
-//         // 🔍 Regex to extract multiple files correctly
 //         const filePattern =
 //           /FILE:\s*([\w.\-\/]+)\s*\nCODE:\s*([\s\S]*?)(?=\nFILE:|$)/g;
 //         let match;
@@ -81,7 +72,6 @@
 //           const fileContent = match[2].trim();
 
 //           if (fileName && fileContent) {
-//             // Save to MongoDB
 //             const res = await fetch("/api/files", {
 //               method: "POST",
 //               headers: { "Content-Type": "application/json" },
@@ -95,7 +85,6 @@
 //           }
 //         }
 
-//         // Update state to reflect new files
 //         setFiles((prevFiles) => [...prevFiles, ...newFiles]);
 
 //         return `Files saved successfully: ${newFiles
@@ -118,6 +107,14 @@
 //           onChange={handleCodeChange}
 //         />
 //       </div>
+//       <LivePreview
+//         files={files}
+//         currentFile={currentFile}
+//         code={code}
+//         onCodeChange={handleCodeChange}
+//       />
+//       {/* <LivePreview files={files} currentFile={currentFile} />{" "} */}
+//       {/* 🆕 Add LivePreview */}
 //       <CopilotPopup
 //         instructions={`
 //     You are an AI-powered code generator. Use the following actions:
@@ -145,11 +142,15 @@
 // export default Page;
 "use client";
 import React, { useState, useEffect } from "react";
-import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
+import { Sandpack } from "@codesandbox/sandpack-react";
+import {
+  CopilotKit,
+  useCopilotAction,
+  useCopilotReadable,
+} from "@copilotkit/react-core";
 import { CopilotPopup } from "@copilotkit/react-ui";
 import ScreenOne from "./components/ScreenOne";
 import FileExplorer from "./components/FileExplorer";
-import LivePreview from "./components/LivePreview"; // 🆕 Import LivePreview
 
 function Page() {
   const [files, setFiles] = useState([]);
@@ -242,6 +243,20 @@ function Page() {
     },
   });
 
+  // **Determine Sandpack Template**
+  const getTemplate = () => {
+    if (!currentFile) return "static"; // Default
+    if (currentFile.name.endsWith(".html")) return "static";
+    if (currentFile.name.endsWith(".js") && files.some(f => f.name === "package.json")) return "react";
+    return "static";
+  };
+
+  // **Generate Sandpack Files**
+  const sandpackFiles = files.reduce((acc, file) => {
+    acc[`/${file.name}`] = { code: file.content };
+    return acc;
+  }, {});
+
   return (
     <div className="h-screen flex bg-gray-100">
       <FileExplorer files={files} onFileSelect={handleFileSelect} />
@@ -252,8 +267,21 @@ function Page() {
           onChange={handleCodeChange}
         />
       </div>
-      <LivePreview files={files} currentFile={currentFile} />{" "}
-      {/* 🆕 Add LivePreview */}
+
+      {/* 🔥 Sandpack Live Preview */}
+      <div className="w-1/2 border-l border-gray-300">
+        <Sandpack
+          template={getTemplate()}
+          files={sandpackFiles}
+          options={{
+            showConsole: true,
+            showNavigator: true,
+            showTabs: true,
+            autoReload: true,
+          }}
+        />
+      </div>
+
       <CopilotPopup
         instructions={`
     You are an AI-powered code generator. Use the following actions:
