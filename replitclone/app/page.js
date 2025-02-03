@@ -113,8 +113,7 @@ function Page() {
         code={code}
         onCodeChange={handleCodeChange}
       />
-      {/* <LivePreview files={files} currentFile={currentFile} />{" "} */}
-      {/* 🆕 Add LivePreview */}
+
       <CopilotPopup
         instructions={`
     You are an AI-powered code generator. Use the following actions:
