@@ -12,6 +12,7 @@
 // function Page() {
 //   const [files, setFiles] = useState([]);
 //   const [currentFile, setCurrentFile] = useState(null);
+//   const [code, setCode] = useState("// Select or create a file");
 
 //   // Sync the workspace state with CopilotKit
 //   useCopilotReadable({
@@ -20,7 +21,7 @@
 //     value: {
 //       files: files.map((f) => f.name),
 //       currentFile: currentFile?.name,
-//       currentCode: currentFile?.content || "",
+//       currentCode: code,
 //     },
 //   });
 
@@ -42,99 +43,84 @@
 
 //   // Handle file selection
 //   const handleFileSelect = (file) => {
-//     console.log("🚀 ~ handleFileSelect ~ file:", file);
 //     setCurrentFile(file);
+//     setCode(file.content);
 //   };
 
 //   // Handle code changes
-//   const handleCodeChange = async (newContent) => {
-//     if (!currentFile) return;
-
-//     setCurrentFile((prev) => ({ ...prev, content: newContent }));
-
-//     try {
-//       await fetch("/api/files", {
-//         method: "PUT",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ id: currentFile._id, content: newContent }),
-//       });
-//     } catch (error) {
-//       console.error("Error updating file:", error);
-//     }
-//   };
-
-//   // Create a new file
-//   const handleCreateFile = async (filename) => {
-//     try {
-//       const response = await fetch("/api/files", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ name: filename, content: "" }),
-//       });
-
-//       if (!response.ok) throw new Error("Failed to create file");
-
-//       const newFile = await response.json();
-//       setFiles((prev) => [...prev, newFile]);
-//     } catch (error) {
-//       console.error("Error creating file:", error);
-//     }
-//   };
-
-//   // Delete a file
-//   const handleDeleteFile = async (id) => {
-//     try {
-//       const response = await fetch("/api/files", {
-//         method: "DELETE",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ id }),
-//       });
-
-//       if (!response.ok) throw new Error("Failed to delete file");
-
-//       setFiles((prev) => prev.filter((file) => file._id !== id));
-//       if (currentFile?._id === id) {
-//         setCurrentFile(null);
+//   const handleCodeChange = async (value) => {
+//     setCode(value);
+//     if (currentFile) {
+//       try {
+//         await fetch("/api/files", {
+//           method: "PUT",
+//           headers: { "Content-Type": "application/json" },
+//           body: JSON.stringify({ id: currentFile._id, content: value }),
+//         });
+//       } catch (error) {
+//         console.error("Error updating file:", error);
 //       }
-//     } catch (error) {
-//       console.error("Error deleting file:", error);
 //     }
 //   };
+
+//   // 🔥 New feature: Process chatbot-generated files and store them in MongoDB
+//   useCopilotAction({
+//     name: "processFiles",
+//     description: "Processes AI-generated files and saves them to MongoDB",
+//     parameters: [{ name: "response", type: "string", required: true }],
+//     handler: async ({ response }) => {
+//       try {
+//         const fileBlocks = response.split("---"); // Splitting multiple files
+//         const newFiles = [];
+
+//         for (const block of fileBlocks) {
+//           const lines = block.trim().split("\n");
+//           if (lines.length < 2) continue; // Skip invalid blocks
+
+//           const fileName = lines[0].replace("FILE:", "").trim();
+//           const fileContent = lines
+//             .slice(1)
+//             .join("\n")
+//             .replace("CODE:", "")
+//             .trim();
+
+//           if (fileName && fileContent) {
+//             // Save to MongoDB
+//             const res = await fetch("/api/files", {
+//               method: "POST",
+//               headers: { "Content-Type": "application/json" },
+//               body: JSON.stringify({ name: fileName, content: fileContent }),
+//             });
+
+//             if (res.ok) {
+//               const savedFile = await res.json();
+//               newFiles.push(savedFile);
+//             }
+//           }
+//         }
+
+//         // Update state to reflect new files
+//         setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+//         return `Files saved successfully: ${newFiles
+//           .map((f) => f.name)
+//           .join(", ")}`;
+//       } catch (error) {
+//         console.error("Error processing files:", error);
+//         return "Failed to save files.";
+//       }
+//     },
+//   });
 
 //   return (
 //     <div className="h-screen flex bg-gray-100">
-//       <FileExplorer onFileSelect={handleFileSelect} currentFile={currentFile} />
+//       <FileExplorer files={files} onFileSelect={handleFileSelect} />
 //       <div className="flex-1 flex flex-col p-4">
-//         <ScreenOne selectedFile={currentFile} onCodeChange={handleCodeChange} />
+//         <ScreenOne
+//           selectedFile={currentFile}
+//           code={code}
+//           onChange={handleCodeChange}
+//         />
 //       </div>
-//       {/* <CopilotPopup
-//         instructions={`
-//           You are an AI-powered code generator. Use the following actions:
-
-//           1. @processFiles - To create new files, use this format:
-//           @processFiles(response: \`
-//           FILE: filename.ext
-//           CODE:
-//           [code content here]
-
-//           ---
-
-//           FILE: another.ext
-//           CODE:
-//           [more code here]
-//           \`)
-
-//           2. @updateFile - To update existing files:
-//           @updateFile(filename: "file.ext", content: "new content")
-
-//           You can see the current workspace state in the context.
-//           Always use these actions to create or modify files.
-//         `}
-//         labels={{
-//           title: "Project Assistant",
-//           initial: "What would you like to create?",
-//         }}
-//       /> */}
 //       <CopilotPopup
 //         instructions={`
 //     You are an AI-powered code generator. Use the following actions:
@@ -143,26 +129,13 @@
 //     @processFiles(response: \`
 //     FILE: filename.ext
 //     CODE:
-//     [code content here]
-
-//     ---
-
-//     FILE: another.ext
-//     CODE:
-//     [more code here]
+//     [file content]
 //     \`)
 
-//     After generating files, send them to the backend using:
-//     fetch("/api/files", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ name: "filename.ext", content: "[file content]" })
-//     });
+//     After generating files, send them to the backend:
 
-//     2. @updateFile - To update existing files:
-//     @updateFile(filename: "file.ext", content: "new content")
-
-//     Always store new files in MongoDB.
+//     - Store new files in api/files. Always provide the file name and content.
+//     - If updating, use @updateFile(filename: "file.ext", content: "new content").
 //   `}
 //         labels={{
 //           title: "Project Assistant",
@@ -190,7 +163,7 @@ function Page() {
   const [currentFile, setCurrentFile] = useState(null);
   const [code, setCode] = useState("// Select or create a file");
 
-  // Sync the workspace state with CopilotKit
+  // Sync workspace state with CopilotKit
   useCopilotReadable({
     name: "workspaceState",
     description: "Current state of the workspace",
@@ -239,6 +212,51 @@ function Page() {
     }
   };
 
+  // 🔥 Improved AI-generated file processing (Handles React & Separates CSS)
+  useCopilotAction({
+    name: "processFiles",
+    description: "Processes AI-generated files and saves them to MongoDB",
+    parameters: [{ name: "response", type: "string", required: true }],
+    handler: async ({ response }) => {
+      try {
+        // 🔍 Regex to extract multiple files correctly
+        const filePattern =
+          /FILE:\s*([\w.\-\/]+)\s*\nCODE:\s*([\s\S]*?)(?=\nFILE:|$)/g;
+        let match;
+        const newFiles = [];
+
+        while ((match = filePattern.exec(response)) !== null) {
+          const fileName = match[1].trim();
+          const fileContent = match[2].trim();
+
+          if (fileName && fileContent) {
+            // Save to MongoDB
+            const res = await fetch("/api/files", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: fileName, content: fileContent }),
+            });
+
+            if (res.ok) {
+              const savedFile = await res.json();
+              newFiles.push(savedFile);
+            }
+          }
+        }
+
+        // Update state to reflect new files
+        setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+
+        return `Files saved successfully: ${newFiles
+          .map((f) => f.name)
+          .join(", ")}`;
+      } catch (error) {
+        console.error("Error processing files:", error);
+        return "Failed to save files.";
+      }
+    },
+  });
+
   return (
     <div className="h-screen flex bg-gray-100">
       <FileExplorer files={files} onFileSelect={handleFileSelect} />
@@ -251,27 +269,19 @@ function Page() {
       </div>
       <CopilotPopup
         instructions={`
-          You are an AI-powered code generator. Use the following actions:
-          
-          1. @processFiles - To create new files, use this format:
-          @processFiles(response: \`
-          FILE: filename.ext
-          CODE:
-          [file content]
-          \`)
+    You are an AI-powered code generator. Use the following actions:
 
-          After generating files, send them to the backend:
-          fetch("/api/files", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: "filename.ext", content: "[file content]" })
-          });
+    1. @processFiles - To create new files, use this format:
+    @processFiles(response: \`
+    FILE: filename.ext
+    CODE:
+    [file content]
+    \`)
 
-          2. @updateFile - To update existing files:
-          @updateFile(filename: "file.ext", content: "new content")
-
-          Always store new files in MongoDB.
-        `}
+    - Store new files in MongoDB using /api/files
+    - Separate HTML, CSS, and React files correctly
+    - If updating, use @updateFile(filename: "file.ext", content: "new content").
+  `}
         labels={{
           title: "Project Assistant",
           initial: "What would you like to create?",
