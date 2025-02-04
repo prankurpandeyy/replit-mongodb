@@ -1,4 +1,3 @@
-// perfectly working code for the React preview on sandbox
 import React, { useEffect, useState } from "react";
 import {
   SandpackProvider,
@@ -8,9 +7,8 @@ import {
   SandpackThemeProvider,
 } from "@codesandbox/sandpack-react";
 
-const LivePreview = ({ files, currentFile, code }) => {
+const ReactFilePreview = ({ files, currentFile, code }) => {
   const [sandboxFiles, setSandboxFiles] = useState({});
-  const [template, setTemplate] = useState("vanilla"); // Default to static
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +19,6 @@ const LivePreview = ({ files, currentFile, code }) => {
       return acc;
     }, {});
 
-    // Check if the project is React
     const isReactProject = files.some(
       (file) =>
         file.name.endsWith(".jsx") ||
@@ -29,20 +26,14 @@ const LivePreview = ({ files, currentFile, code }) => {
     );
 
     if (isReactProject) {
-      setTemplate("react");
-
-      // Ensure App.js exists
-      if (!newFiles["/App.js"]) {
-        newFiles["/App.js"] = {
-          code: `
-            import React from "react";
-            function App() { return <h1>Hello, React!</h1>; }
-            export default App;
-          `,
-        };
-      }
-
-      // Ensure index.js exists
+      // React-specific files
+      newFiles["/App.js"] = {
+        code: `
+          import React from "react";
+          function App() { return <h1>Hello, React!</h1>; }
+          export default App;
+        `,
+      };
       newFiles["/index.js"] = {
         code: `
           import React from "react";
@@ -52,13 +43,9 @@ const LivePreview = ({ files, currentFile, code }) => {
           const root = document.getElementById("root");
           if (root) {
             ReactDOM.createRoot(root).render(<App />);
-          } else {
-            console.error("Root element not found!");
           }
         `,
       };
-
-      // Ensure index.html exists
       newFiles["/index.html"] = {
         code: `
           <!DOCTYPE html>
@@ -74,8 +61,6 @@ const LivePreview = ({ files, currentFile, code }) => {
           </html>
         `,
       };
-
-      // Ensure package.json
       newFiles["/package.json"] = {
         code: JSON.stringify(
           {
@@ -89,38 +74,9 @@ const LivePreview = ({ files, currentFile, code }) => {
           2
         ),
       };
-    } else {
-      setTemplate("vanilla");
-
-      const htmlFile = files.find((f) => f.name.endsWith(".html"));
-      if (htmlFile) {
-        let htmlContent = htmlFile.content;
-
-        // Inject CSS files
-        files
-          .filter((f) => f.name.endsWith(".css"))
-          .forEach((cssFile) => {
-            htmlContent = htmlContent.replace(
-              "</head>",
-              `<link rel="stylesheet" href="${cssFile.name}"></head>`
-            );
-          });
-
-        // Inject JS files
-        files
-          .filter((f) => f.name.endsWith(".js"))
-          .forEach((jsFile) => {
-            htmlContent = htmlContent.replace(
-              "</body>",
-              `<script src="${jsFile.name}"></script></body>`
-            );
-          });
-
-        newFiles["/index.html"] = { code: htmlContent };
-      }
     }
 
-    // Ensure the current file is included
+    // Add the current file to the sandbox files
     newFiles[`/${currentFile.name}`] = { code };
     setSandboxFiles(newFiles);
     setLoading(false);
@@ -134,7 +90,7 @@ const LivePreview = ({ files, currentFile, code }) => {
         </div>
       ) : currentFile ? (
         <SandpackProvider
-          template={template}
+          template="react"
           files={sandboxFiles}
           showCodeEditor={false}
         >
@@ -154,4 +110,4 @@ const LivePreview = ({ files, currentFile, code }) => {
   );
 };
 
-export default LivePreview;
+export default ReactFilePreview;
