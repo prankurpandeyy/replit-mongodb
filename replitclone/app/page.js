@@ -235,12 +235,12 @@ function Page() {
     \`)
 
     - Store new files in MongoDB using /api/files.
-    - Correctly classify and separate different file types: 
-      - Static: HTML, CSS, JS 
+    - Correctly classify and separate different file types:
+      - Static: HTML, CSS, JS
       - React: JSX, JS (React components)
     - For React projects:
       - Ensure the presence of index.js as the entry point.
-      - Ensure there is a App.css file for styling 
+      - Ensure there is a App.css file for styling
       - Ensure index.html contains a root <div id="root"></div>.
       - Separate components correctly (e.g., App.js, Header.jsx).
       - Include a package.json file with necessary React dependencies.

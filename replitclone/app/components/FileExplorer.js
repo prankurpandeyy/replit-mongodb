@@ -12,6 +12,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
   const [editedFileName, setEditedFileName] = useState("");
 
   // Initialize socket connection
+
   useEffect(() => {
     // Connect to the Socket.IO server running on the same port as Next.js
     const socketInstance = io("http://localhost:3000", {
@@ -101,7 +102,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
       const response = await fetch("/api/files", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newFileName, content: "" }),
+        body: JSON.stringify({ name: newFileName }),
       });
 
       if (!response.ok) throw new Error("Failed to create file");
@@ -175,7 +176,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     <div className="w-64 bg-gray-900 p-4 h-full text-white rounded-lg shadow-lg flex flex-col">
       <h2 className="text-lg font-semibold mb-4">Files</h2>
 
-      <div className="flex justify-center items-center mb-3 gap-2">
+      {/* <div className="flex justify-center items-center mb-3 gap-2">
         <input
           type="text"
           value={newFileName}
@@ -189,7 +190,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
         >
           <Plus size={16} />
         </button>
-      </div>
+      </div> */}
 
       {loading ? (
         <div className="text-gray-400 text-sm">Loading files...</div>
