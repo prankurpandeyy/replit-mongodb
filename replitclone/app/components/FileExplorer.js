@@ -1,15 +1,81 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
+import io from "socket.io-client";
 
 const FileExplorer = ({ onFileSelect, currentFile }) => {
   const [files, setFiles] = useState([]);
+  const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newFileName, setNewFileName] = useState("");
   const [editingFile, setEditingFile] = useState(null);
   const [editedFileName, setEditedFileName] = useState("");
 
-  // Fetch files from MongoDB
+  // Initialize socket connection
+  useEffect(() => {
+    // Connect to the Socket.IO server running on the same port as Next.js
+    const socketInstance = io("http://localhost:3000", {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("Connected to Socket.IO server");
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("Disconnected from Socket.IO server");
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for real-time updates
+    socket.on("new-file", (newFile) => {
+      setFiles((prevFiles) => {
+        if (!prevFiles.some((file) => file._id === newFile._id)) {
+          return [...prevFiles, newFile];
+        }
+        return prevFiles;
+      });
+    });
+
+    socket.on("delete-file", (fileId) => {
+      setFiles((prevFiles) => prevFiles.filter((file) => file._id !== fileId));
+    });
+
+    socket.on("update-file", (updatedFile) => {
+      setFiles((prevFiles) =>
+        prevFiles.map((file) =>
+          file._id === updatedFile._id
+            ? { ...file, name: updatedFile.name }
+            : file
+        )
+      );
+    });
+
+    return () => {
+      socket.off("new-file");
+      socket.off("delete-file");
+      socket.off("update-file");
+    };
+  }, [socket]);
+
+  // Fetch initial files
   const fetchFiles = async () => {
     try {
       const response = await fetch("/api/files");
@@ -28,46 +94,44 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     fetchFiles();
   }, []);
 
-  // New function for file creation
-  const createNewFile = async (fileName) => {
-    if (!fileName.trim()) return;
-    console.log("Creating file with name:", fileName); // Don't allow empty file name
+  // Create new file
+  const createNewFile = async () => {
+    if (!newFileName.trim()) return;
     try {
       const response = await fetch("/api/files", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: fileName, content: "" }),
+        body: JSON.stringify({ name: newFileName, content: "" }),
       });
 
       if (!response.ok) throw new Error("Failed to create file");
 
       const newFile = await response.json();
-      console.log("New file created:", newFile);
-      setFiles((prevFiles) => [...prevFiles, newFile]);
+      socket.emit("new-file", newFile);
+      setNewFileName("");
     } catch (error) {
       console.error("Error creating file:", error);
     }
   };
 
-  // Call the new function when the user clicks "Create"
-  // const handleCreateFile = () => {
-  //   createNewFile(newFileName); // Handle creation
-  //   setNewFileName(""); // Clear the input field after file creation
-  // };
-
-  // Delete a file
   const handleDeleteFile = async (e, id) => {
     e.stopPropagation();
+    setFiles((prevFiles) => prevFiles.filter((file) => file._id !== id)); // Optimistic update
+
     try {
       const response = await fetch("/api/files", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
+
       if (!response.ok) throw new Error("Failed to delete file");
-      setFiles((prevFiles) => prevFiles.filter((file) => file._id !== id));
+
+      socket.emit("delete-file", id);
     } catch (error) {
       console.error("Error deleting file:", error);
+      // Revert state if API call fails
+      await fetchFiles();
     }
   };
 
@@ -78,45 +142,53 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     setEditedFileName(file.name);
   };
 
-  // Save edited file name
   const handleEditSave = async (e, id) => {
     e.stopPropagation();
+    if (!editedFileName.trim()) return;
+
+    const previousFiles = [...files];
+    setFiles((prevFiles) =>
+      prevFiles.map((file) =>
+        file._id === id ? { ...file, name: editedFileName } : file
+      )
+    ); // Optimistic update
+
     try {
       const response = await fetch("/api/files", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, name: editedFileName }),
       });
+
       if (!response.ok) throw new Error("Failed to update file");
 
-      setFiles((prevFiles) =>
-        prevFiles.map((file) =>
-          file._id === id ? { ...file, name: editedFileName } : file
-        )
-      );
+      const updatedFile = await response.json();
+      socket.emit("update-file", updatedFile);
       setEditingFile(null);
     } catch (error) {
       console.error("Error updating file:", error);
+      setFiles(previousFiles); // Revert state if API call fails
     }
   };
 
   return (
     <div className="w-64 bg-gray-900 p-4 h-full text-white rounded-lg shadow-lg flex flex-col">
       <h2 className="text-lg font-semibold mb-4">Files</h2>
+
       <div className="flex justify-center items-center mb-3 gap-2">
-        {/* <input
+        <input
           type="text"
           value={newFileName}
           onChange={(e) => setNewFileName(e.target.value)}
           placeholder="New file name"
           className="flex-grow p-1 w-40 rounded bg-gray-800 text-white placeholder-gray-400 outline-none border border-gray-700 focus:border-blue-500"
-        /> */}
-        {/* <button
-          onClick={handleCreateFile}
+        />
+        <button
+          onClick={createNewFile}
           className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded"
         >
           <Plus size={16} />
-        </button> */}
+        </button>
       </div>
 
       {loading ? (
@@ -131,7 +203,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
             <div
               key={file._id || file.name}
               className={`cursor-pointer flex justify-between items-center p-2 rounded text-white transition-all duration-200 ${
-                currentFile?.name === file.name
+                currentFile?._id === file._id
                   ? "bg-blue-600"
                   : "hover:bg-gray-700"
               }`}

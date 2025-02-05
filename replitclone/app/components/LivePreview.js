@@ -1,4 +1,3 @@
-// perfectly working code for the React preview on sandbox
 import React, { useEffect, useState } from "react";
 import {
   SandpackProvider,
@@ -14,14 +13,14 @@ const LivePreview = ({ files, currentFile, code }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentFile) return;
+    if (!currentFile || !files) return;
 
     const newFiles = files.reduce((acc, file) => {
       acc[`/${file.name}`] = { code: file.content };
       return acc;
     }, {});
 
-    // Check if the project is React
+    // Check if the project is React-based
     const isReactProject = files.some(
       (file) =>
         file.name.endsWith(".jsx") ||
@@ -75,7 +74,7 @@ const LivePreview = ({ files, currentFile, code }) => {
         `,
       };
 
-      // Ensure package.json
+      // Ensure package.json exists
       newFiles["/package.json"] = {
         code: JSON.stringify(
           {
