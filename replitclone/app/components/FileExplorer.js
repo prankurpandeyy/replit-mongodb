@@ -176,22 +176,6 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     <div className="w-64 bg-gray-900 p-4 h-full text-white rounded-lg shadow-lg flex flex-col">
       <h2 className="text-lg font-semibold mb-4">Files</h2>
 
-      {/* <div className="flex justify-center items-center mb-3 gap-2">
-        <input
-          type="text"
-          value={newFileName}
-          onChange={(e) => setNewFileName(e.target.value)}
-          placeholder="New file name"
-          className="flex-grow p-1 w-40 rounded bg-gray-800 text-white placeholder-gray-400 outline-none border border-gray-700 focus:border-blue-500"
-        />
-        <button
-          onClick={createNewFile}
-          className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded"
-        >
-          <Plus size={16} />
-        </button>
-      </div> */}
-
       {loading ? (
         <div className="text-gray-400 text-sm">Loading files...</div>
       ) : error ? (
