@@ -1,20 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
-import io from "socket.io-client";
+import io, { Socket } from "socket.io-client";
+import { FileData } from '../types/file';
 
-const FileExplorer = ({ onFileSelect, currentFile }) => {
-  const [files, setFiles] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [newFileName, setNewFileName] = useState("");
-  const [editingFile, setEditingFile] = useState(null);
-  const [editedFileName, setEditedFileName] = useState("");
+interface FileExplorerProps {
+files: FileData[];
+onFileSelect: (file: FileData) => void;
+currentFile: FileData | null;
+}
+
+const FileExplorer: React.FC<FileExplorerProps> = ({
+files: initialFiles,
+onFileSelect,
+currentFile,
+}) => {
+const [files, setFiles] = useState<FileData[]>(initialFiles);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newFileName, setNewFileName] = useState<string>("");
+  const [editingFile, setEditingFile] = useState<string | null>(null);
+  const [editedFileName, setEditedFileName] = useState<string>("");
 
   // Initialize socket connection
-
   useEffect(() => {
-    // Connect to the Socket.IO server running on the same port as Next.js
     const socketInstance = io("http://localhost:3000", {
       reconnection: true,
       reconnectionAttempts: 5,
@@ -46,7 +55,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     if (!socket) return;
 
     // Listen for real-time updates
-    socket.on("new-file", (newFile) => {
+    socket.on("new-file", (newFile: FileData) => {
       setFiles((prevFiles) => {
         if (!prevFiles.some((file) => file._id === newFile._id)) {
           return [...prevFiles, newFile];
@@ -55,11 +64,11 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
       });
     });
 
-    socket.on("delete-file", (fileId) => {
+    socket.on("delete-file", (fileId: string) => {
       setFiles((prevFiles) => prevFiles.filter((file) => file._id !== fileId));
     });
 
-    socket.on("update-file", (updatedFile) => {
+    socket.on("update-file", (updatedFile: FileData) => {
       setFiles((prevFiles) =>
         prevFiles.map((file) =>
           file._id === updatedFile._id
@@ -81,7 +90,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
     try {
       const response = await fetch("/api/files");
       if (!response.ok) throw new Error("Failed to fetch files");
-      const data = await response.json();
+    const data: FileData[] = await response.json();
       setFiles(data);
     } catch (error) {
       console.error("Error fetching files:", error);
@@ -107,15 +116,15 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
 
       if (!response.ok) throw new Error("Failed to create file");
 
-      const newFile = await response.json();
-      socket.emit("new-file", newFile);
+    const newFile: FileData = await response.json();
+      socket?.emit("new-file", newFile);
       setNewFileName("");
     } catch (error) {
       console.error("Error creating file:", error);
     }
   };
 
-  const handleDeleteFile = async (e, id) => {
+  const handleDeleteFile = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setFiles((prevFiles) => prevFiles.filter((file) => file._id !== id)); // Optimistic update
 
@@ -128,23 +137,24 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
 
       if (!response.ok) throw new Error("Failed to delete file");
 
-      socket.emit("delete-file", id);
+      socket?.emit("delete-file", id);
     } catch (error) {
       console.error("Error deleting file:", error);
-      // Revert state if API call fails
-      await fetchFiles();
+      await fetchFiles(); // Revert state if API call fails
     }
   };
 
-  // Start editing file name
-  const handleEditStart = (e, file) => {
+const handleEditStart = (e: React.MouseEvent, file: FileData) => {
     e.stopPropagation();
     setEditingFile(file._id);
     setEditedFileName(file.name);
   };
 
-  const handleEditSave = async (e, id) => {
-    e.stopPropagation();
+  const handleEditSave = async (
+    e: React.FocusEvent | React.KeyboardEvent,
+    id: string
+  ) => {
+    e.preventDefault();
     if (!editedFileName.trim()) return;
 
     const previousFiles = [...files];
@@ -163,8 +173,8 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
 
       if (!response.ok) throw new Error("Failed to update file");
 
-      const updatedFile = await response.json();
-      socket.emit("update-file", updatedFile);
+    const updatedFile: FileData = await response.json();
+      socket?.emit("update-file", updatedFile);
       setEditingFile(null);
     } catch (error) {
       console.error("Error updating file:", error);
@@ -186,7 +196,7 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
         <div className="space-y-2 overflow-y-auto flex-grow">
           {files.map((file) => (
             <div
-              key={file._id || file.name}
+              key={file._id}
               className={`cursor-pointer flex justify-between items-center p-2 rounded text-white transition-all duration-200 ${
                 currentFile?._id === file._id
                   ? "bg-blue-600"
@@ -198,11 +208,11 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
                 <input
                   type="text"
                   value={editedFileName}
-                  onChange={(e) => setEditedFileName(e.target.value)}
-                  onBlur={(e) => handleEditSave(e, file._id)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" ? handleEditSave(e, file._id) : null
-                  }
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditedFileName(e.target.value)}
+                onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleEditSave(e, file._id)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
+                e.key === "Enter" ? handleEditSave(e, file._id) : null
+                }
                   autoFocus
                   className="bg-gray-800 text-white p-1 rounded outline-none w-32"
                 />
@@ -212,13 +222,13 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={(e) => handleEditStart(e, file)}
+                onClick={(e: React.MouseEvent) => handleEditStart(e, file)}
                   className="text-yellow-400 hover:text-yellow-600 p-1 rounded"
                 >
                   <Pencil size={16} />
                 </button>
                 <button
-                  onClick={(e) => handleDeleteFile(e, file._id)}
+                onClick={(e: React.MouseEvent) => handleDeleteFile(e, file._id)}
                   className="text-red-400 hover:text-red-600 p-1 rounded"
                 >
                   <Trash2 size={16} />
@@ -228,6 +238,8 @@ const FileExplorer = ({ onFileSelect, currentFile }) => {
           ))}
         </div>
       )}
+
+     
     </div>
   );
 };
