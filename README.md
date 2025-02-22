@@ -44,7 +44,7 @@ A fully functional Replit clone built with Next.js, Monaco Editor, and CodeSandb
 
 ## Note : If anyone wants API_KEYS to build the project you can connect with me here 
 - **Prankur Pandey Twitter** - [@prankurpandeyy](https://www.twitter.com/prankurpandeyy/)
-- - **Prankur Pandey Twitter** - [@prankurpandeyy](https://www.linkedin.com/in/prankurpandeyy/)
+- **Prankur Pandey Linkedin** - [@prankurpandeyy](https://www.linkedin.com/in/prankurpandeyy/)
 
 ## Usage
 
